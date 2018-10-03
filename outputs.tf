@@ -14,9 +14,10 @@ output "template_instance_security_group" {
   value = "${aws_security_group.template.id}"
 }
 
-output "codebuild_security_group" {
-  value = "${aws_security_group.codebuild.id}"
-}
+## Will be required if the codebuild is in the VPC
+# output "codebuild_security_group" {
+#   value = "${aws_security_group.codebuild.id}"
+# }
 
 output "codepipeline_artifact_bucket" {
   value = "${aws_s3_bucket.codepipeline_artifact.id}"
@@ -37,3 +38,8 @@ output "subnet_id" {
 output "vpc_id" {
   value = "${data.aws_vpc.selected.id}"
 }
+
+# output "codepipeline_kms_arn" {
+#   value = "${aws_kms_key.codepipeline.arn}"
+# }
+

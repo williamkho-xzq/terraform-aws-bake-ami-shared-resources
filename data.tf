@@ -28,55 +28,56 @@ data "aws_subnet" "selected" {
   id = "${random_shuffle.subnet_id.result[0]}"
 }
 
-data "aws_iam_policy_document" "codebuild_ec2" {
-  statement {
-    effect = "Allow"
-
-    actions = [
-      "ec2:CreateNetworkInterface",
-      "ec2:DescribeDhcpOptions",
-      "ec2:DescribeNetworkInterfaces",
-      "ec2:DeleteNetworkInterface",
-      "ec2:DescribeSubnets",
-      "ec2:DescribeSecurityGroups",
-      "ec2:DescribeVpcs",
-    ]
-
-    resources = [
-      "*",
-    ]
-  }
-
-  statement {
-    effect = "Allow"
-
-    actions = [
-      "ec2:CreateNetworkInterfacePermission",
-    ]
-
-    resources = [
-      "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:network-interface/*",
-    ]
-
-    condition = {
-      test     = "StringEquals"
-      variable = "ec2:AuthorizedService"
-
-      values = [
-        "codebuild.amazonaws.com",
-      ]
-    }
-
-    condition = {
-      test     = "StringEquals"
-      variable = "ec2:Subnet"
-
-      values = [
-        "${data.aws_subnet.selected.arn}",
-      ]
-    }
-  }
-}
+## Will be required if the codebuild is in the VPC
+# data "aws_iam_policy_document" "codebuild_ec2" {
+#   statement {
+#     effect = "Allow"
+#
+#     actions = [
+#       "ec2:CreateNetworkInterface",
+#       "ec2:DescribeDhcpOptions",
+#       "ec2:DescribeNetworkInterfaces",
+#       "ec2:DeleteNetworkInterface",
+#       "ec2:DescribeSubnets",
+#       "ec2:DescribeSecurityGroups",
+#       "ec2:DescribeVpcs",
+#     ]
+#
+#     resources = [
+#       "*",
+#     ]
+#   }
+#
+#   statement {
+#     effect = "Allow"
+#
+#     actions = [
+#       "ec2:CreateNetworkInterfacePermission",
+#     ]
+#
+#     resources = [
+#       "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:network-interface/*",
+#     ]
+#
+#     condition = {
+#       test     = "StringEquals"
+#       variable = "ec2:AuthorizedService"
+#
+#       values = [
+#         "codebuild.amazonaws.com",
+#       ]
+#     }
+#
+#     condition = {
+#       test     = "StringEquals"
+#       variable = "ec2:Subnet"
+#
+#       values = [
+#         "${data.aws_subnet.selected.arn}",
+#       ]
+#     }
+#   }
+# }
 
 data "aws_iam_policy_document" "codebuild_s3" {
   statement {
@@ -525,7 +526,283 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
       variable = "s3:x-amz-acl"
 
       values = [
-        "bucket-owner-read",
+        "bucket-owner-full-control",
+      ]
+    }
+  }
+
+  statement {
+    sid    = "DenyAllUnEncryptedHTTPAccess"
+    effect = "Deny"
+
+    principals = {
+      type = "*"
+
+      identifiers = [
+        "*",
+      ]
+    }
+
+    actions = [
+      "s3:*",
+    ]
+
+    resources = [
+      "arn:aws:s3:::${module.application_binary.name}/*",
+    ]
+
+    condition = {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+
+      values = [
+        "false",
+      ]
+    }
+  }
+
+  statement {
+    sid    = "DenyIncorrectEncryptionHeader"
+    effect = "Deny"
+
+    principals = {
+      type = "*"
+
+      identifiers = [
+        "*",
+      ]
+    }
+
+    actions = [
+      "s3:PutObject",
+    ]
+
+    resources = [
+      "arn:aws:s3:::${module.application_binary.name}/*",
+    ]
+
+    condition = {
+      test     = "StringNotEquals"
+      variable = "s3:x-amz-server-side-encryption"
+
+      values = [
+        "AES256",
+      ]
+    }
+  }
+
+  statement {
+    sid    = "DenyUnEncryptedObjectUploads"
+    effect = "Deny"
+
+    principals = {
+      type = "*"
+
+      identifiers = [
+        "*",
+      ]
+    }
+
+    actions = [
+      "s3:PutObject",
+    ]
+
+    resources = [
+      "arn:aws:s3:::${module.application_binary.name}/*",
+    ]
+
+    condition = {
+      test     = "Null"
+      variable = "s3:x-amz-server-side-encryption"
+
+      values = [
+        "true",
+      ]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "codebuild_cache_bucket_policy" {
+  statement {
+    sid    = "DenyAllUnEncryptedHTTPAccess"
+    effect = "Deny"
+
+    principals = {
+      type = "*"
+
+      identifiers = [
+        "*",
+      ]
+    }
+
+    actions = [
+      "s3:*",
+    ]
+
+    resources = [
+      "arn:aws:s3:::${module.codebuild_cache.name}/*",
+    ]
+
+    condition = {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+
+      values = [
+        "false",
+      ]
+    }
+  }
+
+  statement {
+    sid    = "DenyIncorrectEncryptionHeader"
+    effect = "Deny"
+
+    principals = {
+      type = "*"
+
+      identifiers = [
+        "*",
+      ]
+    }
+
+    actions = [
+      "s3:PutObject",
+    ]
+
+    resources = [
+      "arn:aws:s3:::${module.codebuild_cache.name}/*",
+    ]
+
+    condition = {
+      test     = "StringNotEquals"
+      variable = "s3:x-amz-server-side-encryption"
+
+      values = [
+        "aws:kms",
+        "AES256",
+      ]
+    }
+  }
+
+  statement {
+    sid    = "DenyUnEncryptedObjectUploads"
+    effect = "Deny"
+
+    principals = {
+      type = "*"
+
+      identifiers = [
+        "*",
+      ]
+    }
+
+    actions = [
+      "s3:PutObject",
+    ]
+
+    resources = [
+      "arn:aws:s3:::${module.codebuild_cache.name}/*",
+    ]
+
+    condition = {
+      test     = "Null"
+      variable = "s3:x-amz-server-side-encryption"
+
+      values = [
+        "true",
+      ]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "codepipeline_artifact_bucket_policy" {
+  statement {
+    sid    = "DenyAllUnEncryptedHTTPAccess"
+    effect = "Deny"
+
+    principals = {
+      type = "*"
+
+      identifiers = [
+        "*",
+      ]
+    }
+
+    actions = [
+      "s3:*",
+    ]
+
+    resources = [
+      "arn:aws:s3:::${module.codepipeline_artifact_bucket_name.name}/*",
+    ]
+
+    condition = {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+
+      values = [
+        "false",
+      ]
+    }
+  }
+
+  statement {
+    sid    = "DenyIncorrectEncryptionHeader"
+    effect = "Deny"
+
+    principals = {
+      type = "*"
+
+      identifiers = [
+        "*",
+      ]
+    }
+
+    actions = [
+      "s3:PutObject",
+    ]
+
+    resources = [
+      "arn:aws:s3:::${module.codepipeline_artifact_bucket_name.name}/*",
+    ]
+
+    condition = {
+      test     = "StringNotEquals"
+      variable = "s3:x-amz-server-side-encryption"
+
+      values = [
+        "aws:kms",
+        "AES256",
+      ]
+    }
+  }
+
+  statement {
+    sid    = "DenyUnEncryptedObjectUploads"
+    effect = "Deny"
+
+    principals = {
+      type = "*"
+
+      identifiers = [
+        "*",
+      ]
+    }
+
+    actions = [
+      "s3:PutObject",
+    ]
+
+    resources = [
+      "arn:aws:s3:::${module.codepipeline_artifact_bucket_name.name}/*",
+    ]
+
+    condition = {
+      test     = "Null"
+      variable = "s3:x-amz-server-side-encryption"
+
+      values = [
+        "true",
       ]
     }
   }
@@ -540,7 +817,9 @@ data "aws_iam_policy_document" "codepipeline_codebuild" {
       "codebuild:StartBuild",
     ]
 
-    resources = ["arn:aws:codebuild:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:project/${var.product_domain}*"]
+    resources = [
+      "arn:aws:codebuild:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:project/${var.product_domain}*",
+    ]
   }
 }
 
@@ -552,7 +831,9 @@ data "aws_iam_policy_document" "codepipeline_lambda" {
       "lambda:ListFunctions",
     ]
 
-    resources = ["*"]
+    resources = [
+      "*",
+    ]
   }
 
   statement {

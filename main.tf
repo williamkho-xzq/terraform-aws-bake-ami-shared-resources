@@ -3,8 +3,8 @@ module "codebuild_role" {
 
   role_identifier            = "${var.product_domain}-bake-ami"
   role_description           = "Service Role for CodeBuild Bake AMI"
-  role_force_detach_policies = true
-  role_max_session_duration  = 43200
+  role_force_detach_policies = "true"
+  role_max_session_duration  = "43200"
 
   aws_service = "codebuild.amazonaws.com"
 }
@@ -27,19 +27,20 @@ resource "aws_iam_role_policy" "codebuild_policy_s3" {
   policy = "${data.aws_iam_policy_document.codebuild_s3.json}"
 }
 
-resource "aws_iam_role_policy" "codebuild_policy_ec2" {
-  name   = "CodeBuildBakeAmi-${data.aws_region.current.name}-${var.product_domain}-EC2"
-  role   = "${module.codebuild_role.role_name}"
-  policy = "${data.aws_iam_policy_document.codebuild_ec2.json}"
-}
+## Will be required if the codebuild is in the VPC
+# resource "aws_iam_role_policy" "codebuild_policy_ec2" {
+#   name   = "CodeBuildBakeAmi-${data.aws_region.current.name}-${var.product_domain}-EC2"
+#   role   = "${module.codebuild_role.role_name}"
+#   policy = "${data.aws_iam_policy_document.codebuild_ec2.json}"
+# }
 
 module "codepipeline_role" {
   source = "github.com/traveloka/terraform-aws-iam-role.git//modules/service?ref=v0.5.1"
 
   role_identifier            = "${var.product_domain}-ami-baking"
   role_description           = "Service Role for CodePipeline Bake AMI"
-  role_force_detach_policies = true
-  role_max_session_duration  = 43200
+  role_force_detach_policies = "true"
+  role_max_session_duration  = "43200"
 
   aws_service = "codepipeline.amazonaws.com"
 }
@@ -69,43 +70,49 @@ module "template_instance_role" {
   cluster_role = "template"
 }
 
-module "codebuild_sg_name" {
-  source = "github.com/traveloka/terraform-aws-resource-naming.git?ref=v0.7.1"
+## Will be required if the codebuild is in the VPC
+# module "codebuild_sg_name" {
+#   source = "github.com/traveloka/terraform-aws-resource-naming.git?ref=v0.7.1"
+#
+#   name_prefix   = "${var.product_domain}-codebuild"
+#   resource_type = "security_group"
+# }
 
-  name_prefix   = "${var.product_domain}-codebuild"
-  resource_type = "security_group"
-}
+## Will be required if the codebuild is in the VPC
+# resource "aws_security_group" "codebuild" {
+#   name   = "${module.codebuild_sg_name.name}"
+#   vpc_id = "${var.vpc_id}"
+#
+#   tags {
+#     Name          = "${module.codebuild_sg_name.name}"
+#     ProductDomain = "${var.product_domain}"
+#     Environment   = "management"
+#     Description   = "Security group for ${var.product_domain} codebuild projects"
+#     ManagedBy     = "Terraform"
+#   }
+# }
 
-resource "aws_security_group" "codebuild" {
-  name   = "${module.codebuild_sg_name.name}"
-  vpc_id = "${var.vpc_id}"
+## Will be required if the codebuild is in the VPC
+# resource "aws_security_group_rule" "codebuild_http_all" {
+#   type              = "egress"
+#   from_port         = "80"
+#   to_port           = "80"
+#   protocol          = "tcp"
+#   security_group_id = "${aws_security_group.codebuild.id}"
+#   cidr_blocks       = ["0.0.0.0/0"]
+#   description       = "Allow egress to all port HTTP"
+# }
 
-  tags {
-    Name          = "${module.codebuild_sg_name.name}"
-    ProductDomain = "${var.product_domain}"
-    Environment   = "management"
-    Description   = "Security group for ${var.product_domain} codebuild projects"
-    ManagedBy     = "Terraform"
-  }
-}
-
-resource "aws_security_group_rule" "codebuild_http_all" {
-  type              = "egress"
-  from_port         = "80"
-  to_port           = "80"
-  protocol          = "tcp"
-  security_group_id = "${aws_security_group.codebuild.id}"
-  cidr_blocks       = ["0.0.0.0/0"]
-}
-
-resource "aws_security_group_rule" "codebuild_https_all" {
-  type              = "egress"
-  from_port         = "443"
-  to_port           = "443"
-  protocol          = "tcp"
-  security_group_id = "${aws_security_group.codebuild.id}"
-  cidr_blocks       = ["0.0.0.0/0"]
-}
+## Will be required if the codebuild is in the VPC
+# resource "aws_security_group_rule" "codebuild_https_all" {
+#   type              = "egress"
+#   from_port         = "443"
+#   to_port           = "443"
+#   protocol          = "tcp"
+#   security_group_id = "${aws_security_group.codebuild.id}"
+#   cidr_blocks       = ["0.0.0.0/0"]
+#   description       = "Allow egress to all port HTTPS"
+# }
 
 module "template_sg_name" {
   source = "github.com/traveloka/terraform-aws-resource-naming.git?ref=v0.7.1"
@@ -134,6 +141,7 @@ resource "aws_security_group_rule" "template_http_all" {
   protocol          = "tcp"
   security_group_id = "${aws_security_group.template.id}"
   cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow egress to all port HTTP"
 }
 
 resource "aws_security_group_rule" "template_https_all" {
@@ -143,6 +151,7 @@ resource "aws_security_group_rule" "template_https_all" {
   protocol          = "tcp"
   security_group_id = "${aws_security_group.template.id}"
   cidr_blocks       = ["0.0.0.0/0"]
+  description       = "Allow egress to all port HTTPS"
 }
 
 resource "aws_security_group_rule" "template_codebuild_ssh" {
@@ -152,16 +161,19 @@ resource "aws_security_group_rule" "template_codebuild_ssh" {
   protocol          = "tcp"
   security_group_id = "${aws_security_group.template.id}"
   cidr_blocks       = ["${data.aws_ip_ranges.current_region_codebuild.cidr_blocks}"]
+  description       = "Allow ingress from CodeBuild IP port SSH"
 }
 
-resource "aws_security_group_rule" "codebuild_template_ssh" {
-  type                     = "egress"
-  from_port                = "22"
-  to_port                  = "22"
-  protocol                 = "tcp"
-  security_group_id        = "${aws_security_group.codebuild.id}"
-  source_security_group_id = "${aws_security_group.template.id}"
-}
+## Will be required if the codebuild is in the VPC
+# resource "aws_security_group_rule" "codebuild_template_ssh" {
+#   type                     = "egress"
+#   from_port                = "22"
+#   to_port                  = "22"
+#   protocol                 = "tcp"
+#   security_group_id        = "${aws_security_group.codebuild.id}"
+#   source_security_group_id = "${aws_security_group.template.id}"
+#   description              = "Allow egress to template instance from CodeBuild "
+# }
 
 module "codepipeline_artifact_bucket_name" {
   source = "github.com/traveloka/terraform-aws-resource-naming?ref=v0.7.1"
@@ -174,10 +186,23 @@ resource "aws_s3_bucket" "codepipeline_artifact" {
   bucket = "${module.codepipeline_artifact_bucket_name.name}"
   acl    = "private"
 
-  lifecycle_rule {
-    enabled = true
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
 
-    abort_incomplete_multipart_upload_days = 1
+  policy = "${data.aws_iam_policy_document.codepipeline_artifact_bucket_policy.json}"
+
+  versioning {
+    enabled = "true"
+  }
+
+  lifecycle_rule {
+    enabled                                = "true"
+    abort_incomplete_multipart_upload_days = "1"
   }
 
   tags {
@@ -200,26 +225,34 @@ resource "aws_s3_bucket" "application_binary" {
   bucket = "${module.application_binary.name}"
   acl    = "private"
 
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
+
   policy = "${data.aws_iam_policy_document.appbin_bucket_policy.json}"
 
   versioning {
-    enabled = true
+    enabled = "true"
   }
 
   lifecycle_rule {
-    enabled = true
+    enabled = "true"
 
     expiration {
-      days = 365
+      days = "365"
     }
 
-    abort_incomplete_multipart_upload_days = 1
+    abort_incomplete_multipart_upload_days = "1"
   }
 
   tags {
-    Name          = "${module.codepipeline_artifact_bucket_name.name}"
+    Name          = "${module.application_binary.name}"
     ProductDomain = "${var.product_domain}"
-    Description   = "CodePipeline artifact bucket for ${var.product_domain} services"
+    Description   = "Application Binary bucket for ${var.product_domain} services"
     Environment   = "management"
     ManagedBy     = "Terraform"
   }
@@ -235,22 +268,36 @@ module "codebuild_cache" {
 resource "aws_s3_bucket" "codebuild_cache" {
   bucket        = "${module.codebuild_cache.name}"
   acl           = "private"
-  force_destroy = true
+  force_destroy = "true"
+
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
+
+  policy = "${data.aws_iam_policy_document.codebuild_cache_bucket_policy.json}"
+
+  versioning {
+    enabled = "true"
+  }
 
   lifecycle_rule {
-    enabled = true
+    enabled = "true"
 
     expiration {
-      days = 7
+      days = "7"
     }
 
-    abort_incomplete_multipart_upload_days = 1
+    abort_incomplete_multipart_upload_days = "1"
   }
 
   tags {
-    Name          = "${module.codepipeline_artifact_bucket_name.name}"
+    Name          = "${module.codebuild_cache.name}"
     ProductDomain = "${var.product_domain}"
-    Description   = "CodePipeline artifact bucket for ${var.product_domain} services"
+    Description   = "CodeBuild cache bucket for ${var.product_domain} services"
     Environment   = "management"
     ManagedBy     = "Terraform"
   }
