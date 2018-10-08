@@ -38,8 +38,3 @@ output "subnet_id" {
 output "vpc_id" {
   value = "${data.aws_vpc.selected.id}"
 }
-
-# output "codepipeline_kms_arn" {
-#   value = "${aws_kms_key.codepipeline.arn}"
-# }
-

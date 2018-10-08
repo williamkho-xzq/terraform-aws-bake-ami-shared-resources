@@ -186,6 +186,11 @@ resource "aws_s3_bucket" "codepipeline_artifact" {
   bucket = "${module.codepipeline_artifact_bucket_name.name}"
   acl    = "private"
 
+  logging {
+    target_bucket = "${var.logging_bucket}"
+    target_prefix = "${module.codepipeline_artifact_bucket_name.name}/"
+  }
+
   server_side_encryption_configuration {
     rule {
       apply_server_side_encryption_by_default {
@@ -224,6 +229,11 @@ module "application_binary" {
 resource "aws_s3_bucket" "application_binary" {
   bucket = "${module.application_binary.name}"
   acl    = "private"
+
+  logging {
+    target_bucket = "${var.logging_bucket}"
+    target_prefix = "${module.application_binary.name}/"
+  }
 
   server_side_encryption_configuration {
     rule {
@@ -269,6 +279,11 @@ resource "aws_s3_bucket" "codebuild_cache" {
   bucket        = "${module.codebuild_cache.name}"
   acl           = "private"
   force_destroy = "true"
+
+  logging {
+    target_bucket = "${var.logging_bucket}"
+    target_prefix = "${module.codebuild_cache.name}/"
+  }
 
   server_side_encryption_configuration {
     rule {
