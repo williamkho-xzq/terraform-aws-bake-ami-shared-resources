@@ -12,7 +12,7 @@ module "bei" {
 }
 
 module "beitest_bake_ami" {
-  source = "github.com/salvianreynaldi/terraform-aws-bake-ami?ref=f-events-and-lambda"
+  source = "github.com/salvianreynaldi/terraform-aws-bake-ami?ref=events-trigger"
 
   codepipeline_artifact_bucket = "${module.bei.codepipeline_artifact_bucket}"
   codepipeline_role_arn        = "${module.bei.codepipeline_role_arn}"
@@ -21,12 +21,11 @@ module "beitest_bake_ami" {
   lambda_function_name         = "${aws_lambda_function.share_ami.function_name}"
   template_instance_profile    = "${module.bei.template_instance_profile_name}"
   template_instance_sg         = "${module.bei.template_instance_security_group}"
-
-  service_name        = "beitest"
-  product_domain      = "bei"
-  playbook_bucket     = "${module.bei.application_binary_bucket}"
-  playbook_key        = "beitest/playbook.zip"
-  ami_manifest_bucket = "${module.bei.codepipeline_artifact_bucket}"
+  service_name                 = "beitest"
+  product_domain               = "bei"
+  playbook_bucket              = "${module.bei.application_binary_bucket}"
+  playbook_key                 = "beitest/playbook.zip"
+  ami_manifest_bucket          = "${module.bei.codepipeline_artifact_bucket}"
 
   base_ami_owners = [
     "123456789012",

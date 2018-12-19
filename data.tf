@@ -618,6 +618,51 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
       ]
     }
   }
+
+  statement {
+    sid    = "AWSCloudTrailAclCheck"
+    effect = "Allow"
+
+    principals = {
+      type        = "Service"
+      identifiers = ["cloudtrail.amazonaws.com"]
+    }
+
+    actions = [
+      "s3:GetBucketAcl",
+    ]
+
+    resources = [
+      "arn:aws:s3:::${module.application_binary.name}",
+    ]
+  }
+
+  statement {
+    sid    = "AWSCloudTrailWrite"
+    effect = "Allow"
+
+    principals = {
+      type        = "Service"
+      identifiers = ["cloudtrail.amazonaws.com"]
+    }
+
+    actions = [
+      "s3:PutObject",
+    ]
+
+    resources = [
+      "arn:aws:s3:::${module.application_binary.name}/AWSLogs/*",
+    ]
+
+    condition = {
+      test     = "StringEquals"
+      variable = "s3:x-amz-acl"
+
+      values = [
+        "bucket-owner-full-control",
+      ]
+    }
+  }
 }
 
 data "aws_iam_policy_document" "codebuild_cache_bucket_policy" {
@@ -843,6 +888,20 @@ data "aws_iam_policy_document" "codepipeline_lambda" {
 
     resources = [
       "${var.lambda_function_arn}",
+    ]
+  }
+}
+
+data "aws_iam_policy_document" "events_codepipeline" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "codepipeline:StartPipelineExecution",
+    ]
+
+    resources = [
+      "arn:aws:codepipeline:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${var.product_domain}*",
     ]
   }
 }

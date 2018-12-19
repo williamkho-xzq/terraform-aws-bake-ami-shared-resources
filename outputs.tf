@@ -6,6 +6,10 @@ output "codebuild_role_arn" {
   value = "${module.codebuild_role.role_arn}"
 }
 
+output "events_role_arn" {
+  value = "${module.events_role.role_arn}"
+}
+
 output "template_instance_profile_name" {
   value = "${module.template_instance_role.instance_profile_name}"
 }
@@ -13,11 +17,6 @@ output "template_instance_profile_name" {
 output "template_instance_security_group" {
   value = "${aws_security_group.template.id}"
 }
-
-## Will be required if the codebuild is in the VPC
-# output "codebuild_security_group" {
-#   value = "${aws_security_group.codebuild.id}"
-# }
 
 output "codepipeline_artifact_bucket" {
   value = "${aws_s3_bucket.codepipeline_artifact.id}"

@@ -27,13 +27,6 @@ resource "aws_iam_role_policy" "codebuild_policy_s3" {
   policy = "${data.aws_iam_policy_document.codebuild_s3.json}"
 }
 
-## Will be required if the codebuild is in the VPC
-# resource "aws_iam_role_policy" "codebuild_policy_ec2" {
-#   name   = "CodeBuildBakeAmi-${data.aws_region.current.name}-${var.product_domain}-EC2"
-#   role   = "${module.codebuild_role.role_name}"
-#   policy = "${data.aws_iam_policy_document.codebuild_ec2.json}"
-# }
-
 module "codepipeline_role" {
   source = "github.com/traveloka/terraform-aws-iam-role.git//modules/service?ref=v0.5.1"
 
@@ -69,50 +62,6 @@ module "template_instance_role" {
   service_name = "${var.product_domain}"
   cluster_role = "template"
 }
-
-## Will be required if the codebuild is in the VPC
-# module "codebuild_sg_name" {
-#   source = "github.com/traveloka/terraform-aws-resource-naming.git?ref=v0.7.1"
-#
-#   name_prefix   = "${var.product_domain}-codebuild"
-#   resource_type = "security_group"
-# }
-
-## Will be required if the codebuild is in the VPC
-# resource "aws_security_group" "codebuild" {
-#   name   = "${module.codebuild_sg_name.name}"
-#   vpc_id = "${var.vpc_id}"
-#
-#   tags {
-#     Name          = "${module.codebuild_sg_name.name}"
-#     ProductDomain = "${var.product_domain}"
-#     Environment   = "management"
-#     Description   = "Security group for ${var.product_domain} codebuild projects"
-#     ManagedBy     = "Terraform"
-#   }
-# }
-
-## Will be required if the codebuild is in the VPC
-# resource "aws_security_group_rule" "codebuild_http_all" {
-#   type              = "egress"
-#   from_port         = "80"
-#   to_port           = "80"
-#   protocol          = "tcp"
-#   security_group_id = "${aws_security_group.codebuild.id}"
-#   cidr_blocks       = ["0.0.0.0/0"]
-#   description       = "Allow egress to all port HTTP"
-# }
-
-## Will be required if the codebuild is in the VPC
-# resource "aws_security_group_rule" "codebuild_https_all" {
-#   type              = "egress"
-#   from_port         = "443"
-#   to_port           = "443"
-#   protocol          = "tcp"
-#   security_group_id = "${aws_security_group.codebuild.id}"
-#   cidr_blocks       = ["0.0.0.0/0"]
-#   description       = "Allow egress to all port HTTPS"
-# }
 
 module "template_sg_name" {
   source = "github.com/traveloka/terraform-aws-resource-naming.git?ref=v0.7.1"
@@ -163,17 +112,6 @@ resource "aws_security_group_rule" "template_codebuild_ssh" {
   cidr_blocks       = ["${data.aws_ip_ranges.current_region_codebuild.cidr_blocks}"]
   description       = "Allow ingress from CodeBuild IP port SSH"
 }
-
-## Will be required if the codebuild is in the VPC
-# resource "aws_security_group_rule" "codebuild_template_ssh" {
-#   type                     = "egress"
-#   from_port                = "22"
-#   to_port                  = "22"
-#   protocol                 = "tcp"
-#   security_group_id        = "${aws_security_group.codebuild.id}"
-#   source_security_group_id = "${aws_security_group.template.id}"
-#   description              = "Allow egress to template instance from CodeBuild "
-# }
 
 module "codepipeline_artifact_bucket_name" {
   source = "github.com/traveloka/terraform-aws-resource-naming?ref=v0.7.1"
@@ -316,4 +254,38 @@ resource "aws_s3_bucket" "codebuild_cache" {
     Environment   = "management"
     ManagedBy     = "Terraform"
   }
+}
+
+resource "aws_cloudtrail" "appbin_s3" {
+  name           = "s3-${module.application_binary.name}-trail"
+  s3_bucket_name = "${aws_s3_bucket.application_binary.id}"
+
+  event_selector {
+    read_write_type           = "WriteOnly"
+    include_management_events = false
+
+    data_resource {
+      type = "AWS::S3::Object"
+
+      values = [
+        "${aws_s3_bucket.application_binary.arn}/${var.product_domain}*",
+      ]
+    }
+  }
+}
+
+module "events_role" {
+  source                     = "github.com/traveloka/terraform-aws-iam-role.git//modules/service?ref=v0.5.1"
+  role_identifier            = "codepipeline-trigger"
+  role_description           = "Service Role to trigger ${var.product_domain} CodePipeline pipelines"
+  role_force_detach_policies = true
+  role_max_session_duration  = 43200
+
+  aws_service = "events.amazonaws.com"
+}
+
+resource "aws_iam_role_policy" "events_codepipeline_policy_main" {
+  name   = "${module.events_role.role_name}-main"
+  role   = "${module.events_role.role_name}"
+  policy = "${data.aws_iam_policy_document.events_codepipeline.json}"
 }
