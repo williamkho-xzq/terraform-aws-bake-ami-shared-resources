@@ -276,7 +276,7 @@ resource "aws_cloudtrail" "appbin_s3" {
 
 module "events_role" {
   source                     = "github.com/traveloka/terraform-aws-iam-role.git//modules/service?ref=v0.5.1"
-  role_identifier            = "codepipeline-trigger"
+  role_identifier            = "${var.product_domain}-codepipeline-trigger"
   role_description           = "Service Role to trigger ${var.product_domain} CodePipeline pipelines"
   role_force_detach_policies = true
   role_max_session_duration  = 43200
