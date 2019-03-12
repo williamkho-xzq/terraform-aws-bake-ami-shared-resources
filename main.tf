@@ -256,24 +256,6 @@ resource "aws_s3_bucket" "codebuild_cache" {
   }
 }
 
-resource "aws_cloudtrail" "appbin_s3" {
-  name           = "s3-${module.application_binary.name}-trail"
-  s3_bucket_name = "${aws_s3_bucket.application_binary.id}"
-
-  event_selector {
-    read_write_type           = "WriteOnly"
-    include_management_events = false
-
-    data_resource {
-      type = "AWS::S3::Object"
-
-      values = [
-        "${aws_s3_bucket.application_binary.arn}/${var.product_domain}*",
-      ]
-    }
-  }
-}
-
 module "events_role" {
   source                     = "github.com/traveloka/terraform-aws-iam-role.git//modules/service?ref=v0.5.1"
   role_identifier            = "${var.product_domain}-codepipeline-trigger"
