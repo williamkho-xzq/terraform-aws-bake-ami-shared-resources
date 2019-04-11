@@ -256,9 +256,58 @@ resource "aws_s3_bucket" "codebuild_cache" {
   }
 }
 
+module "cloudtrail_logs" {
+  source = "github.com/traveloka/terraform-aws-resource-naming?ref=v0.7.1"
+
+  name_prefix   = "${var.product_domain}-cloudtrail-logs-${data.aws_caller_identity.current.account_id}-"
+  resource_type = "s3_bucket"
+}
+
+resource "aws_s3_bucket" "cloudtrail_logs" {
+  bucket = "${module.cloudtrail_logs.name}"
+  acl    = "private"
+
+  logging {
+    target_bucket = "default-s3-logs-ap-southeast-1-${data.aws_caller_identity.current.account_id}"
+    target_prefix = "${module.cloudtrail_logs.name}/"
+  }
+
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        sse_algorithm = "AES256"
+      }
+    }
+  }
+
+  policy = "${data.aws_iam_policy_document.cloudtrail_logs_bucket_policy.json}"
+
+  versioning {
+    enabled = "true"
+  }
+
+  lifecycle_rule {
+    enabled = "true"
+
+    expiration {
+      days = "365"
+    }
+
+    abort_incomplete_multipart_upload_days = "1"
+  }
+
+  tags {
+    Name          = "${module.cloudtrail_logs.name}"
+    ProductDomain = "${var.product_domain}"
+    Description   = "S3 bucket for cloudtrail logs"
+    Environment   = "management"
+    ManagedBy     = "terraform"
+  }
+}
+
 resource "aws_cloudtrail" "appbin_s3" {
-  name           = "s3-${module.application_binary.name}-trail"
-  s3_bucket_name = "${aws_s3_bucket.application_binary.id}"
+  name           = "${var.product_domain}-codepipelines-trail"
+  s3_bucket_name = "${module.cloudtrail_logs.name}"
 
   event_selector {
     read_write_type           = "WriteOnly"

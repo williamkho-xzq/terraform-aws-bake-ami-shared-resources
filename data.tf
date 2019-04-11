@@ -618,7 +618,9 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
       ]
     }
   }
+}
 
+data "aws_iam_policy_document" "cloudtrail_logs_bucket_policy" {
   statement {
     sid    = "AWSCloudTrailAclCheck"
     effect = "Allow"
@@ -633,7 +635,7 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
     ]
 
     resources = [
-      "arn:aws:s3:::${module.application_binary.name}",
+      "arn:aws:s3:::${module.cloudtrail_logs.name}",
     ]
   }
 
@@ -651,7 +653,7 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
     ]
 
     resources = [
-      "arn:aws:s3:::${module.application_binary.name}/AWSLogs/*",
+      "arn:aws:s3:::${module.cloudtrail_logs.name}/*",
     ]
 
     condition = {
