@@ -317,7 +317,7 @@ resource "aws_cloudtrail" "appbin_s3" {
       type = "AWS::S3::Object"
 
       values = [
-        "${aws_s3_bucket.application_binary.arn}/${var.product_domain}*",
+        "${aws_s3_bucket.application_binary.arn}/${var.product_domain}",
       ]
     }
   }
