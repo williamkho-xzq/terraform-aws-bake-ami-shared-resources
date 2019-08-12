@@ -67,40 +67,40 @@ EOF
 }
 
 module "lambda_function_name" {
-  source = "github.com/traveloka/terraform-aws-resource-naming.git?ref=v0.7.1"
+  source = "github.com/traveloka/terraform-aws-resource-naming.git?ref=v0.17.0"
 
-  name_prefix   = "bei-ami-sharing"
+  name_prefix = "bei-ami-sharing"
   resource_type = "lambda_function"
 }
 
 resource "aws_lambda_function" "share_ami" {
-  filename         = "${data.archive_file.share_ami_function.output_path}"
+  filename = "${data.archive_file.share_ami_function.output_path}"
   source_code_hash = "${data.archive_file.share_ami_function.output_base64sha256}"
-  role             = "${module.lambda_role.role_arn}"
-  function_name    = "${module.lambda_function_name.name}"
-  description      = "share bei's AMIs"
-  runtime          = "python3.6"
-  handler          = "main.handler"
+  role = "${module.lambda_role.role_arn}"
+  function_name = "${module.lambda_function_name.name}"
+  description = "share bei's AMIs"
+  runtime = "python3.6"
+  handler = "main.handler"
 }
 
 resource "aws_ssm_parameter" "target_accounts" {
-  name  = "ami-target-accounts"
-  type  = "StringList"
+  name = "ami-target-accounts"
+  type = "StringList"
   value = ""
 }
 
 module "lambda_role" {
-  source                     = "github.com/traveloka/terraform-aws-iam-role.git//modules/service?ref=v0.5.1"
-  role_identifier            = "ami-sharing"
-  role_description           = "Service Role for lambda to share bei services AMI to multiple AWS accounts"
+  source = "github.com/traveloka/terraform-aws-iam-role.git//modules/service?ref=v1.0.2"
+  role_identifier = "ami-sharing"
+  role_description = "Service Role for lambda to share bei services AMI to multiple AWS accounts"
   role_force_detach_policies = true
-  role_max_session_duration  = 43200
+  role_max_session_duration = 43200
 
   aws_service = "lambda.amazonaws.com"
 }
 
 resource "aws_iam_role_policy" "lambda" {
-  name   = "${module.lambda_role.role_name}-lambda"
-  role   = "${module.lambda_role.role_name}"
+  name = "${module.lambda_role.role_name}-lambda"
+  role = "${module.lambda_role.role_name}"
   policy = "${data.aws_iam_policy_document.lambda_share_ami.json}"
 }
