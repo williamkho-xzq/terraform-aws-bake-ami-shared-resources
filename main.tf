@@ -274,6 +274,10 @@ resource "aws_s3_bucket" "codebuild_cache" {
       days = "7"
     }
 
+    noncurrent_version_expiration {
+      days = "1"
+    }
+
     abort_incomplete_multipart_upload_days = "1"
   }
 
