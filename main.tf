@@ -187,7 +187,7 @@ resource "aws_s3_bucket" "application_binary" {
     }
   }
 
-  policy = "${data.aws_iam_policy_document.appbin_bucket_policy.json}"
+  policy = "${length(var.appbin_writers) == 0 ? "" : data.aws_iam_policy_document.appbin_bucket_policy.json}"
 
   versioning {
     enabled = "true"

@@ -450,13 +450,12 @@ data "aws_iam_policy_document" "codepipeline_s3" {
 data "aws_iam_policy_document" "appbin_bucket_policy" {
   statement {
     sid    = "AppbinWrite"
-    effect = "${length(var.appbin_writers) > 0 ? "Allow" : "Deny"}"
+    effect = "Allow"
 
     principals = {
       type = "AWS"
 
       identifiers = [
-        "${length(var.appbin_writers) > 0 ? "" : module.codepipeline_role.role_arn}",
         "${var.appbin_writers}",
       ]
     }
