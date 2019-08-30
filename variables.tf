@@ -29,6 +29,24 @@ variable "appbin_writers" {
   type        = "list"
 }
 
+variable "appbin_expiration_days" {
+  description = "The number of days before objects in the application binary bucket are deleted"
+  type        = "string"
+  default     = "365"
+}
+
+variable "appbin_standard_ia_transition_days" {
+  description = "The number of days before objects in the application binary bucket are moved to the standard IA class"
+  type        = "string"
+  default     = "30"
+}
+
+variable "appbin_deep_archive_transition_days" {
+  description = "The number of days before objects in the application binary bucket are moved to the glacier deep archive class"
+  type        = "string"
+  default     = "60"
+}
+
 variable "logging_bucket" {
   description = "The name of the bucket that will receive the log objects of all S3 resources in this module"
   type        = "string"
