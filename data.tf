@@ -456,7 +456,7 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
       type = "AWS"
 
       identifiers = [
-        "${length(var.appbin_writers) > 0 ? "":module.codepipeline_role.role_arn}",
+        "${length(var.appbin_writers) > 0 ? "" : module.codepipeline_role.role_arn}",
         "${var.appbin_writers}",
       ]
     }
