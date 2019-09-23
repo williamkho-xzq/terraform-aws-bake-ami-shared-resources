@@ -28,57 +28,6 @@ data "aws_subnet" "selected" {
   id = "${random_shuffle.subnet_id.result[0]}"
 }
 
-## Will be required if the codebuild is in the VPC
-# data "aws_iam_policy_document" "codebuild_ec2" {
-#   statement {
-#     effect = "Allow"
-#
-#     actions = [
-#       "ec2:CreateNetworkInterface",
-#       "ec2:DescribeDhcpOptions",
-#       "ec2:DescribeNetworkInterfaces",
-#       "ec2:DeleteNetworkInterface",
-#       "ec2:DescribeSubnets",
-#       "ec2:DescribeSecurityGroups",
-#       "ec2:DescribeVpcs",
-#     ]
-#
-#     resources = [
-#       "*",
-#     ]
-#   }
-#
-#   statement {
-#     effect = "Allow"
-#
-#     actions = [
-#       "ec2:CreateNetworkInterfacePermission",
-#     ]
-#
-#     resources = [
-#       "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:network-interface/*",
-#     ]
-#
-#     condition = {
-#       test     = "StringEquals"
-#       variable = "ec2:AuthorizedService"
-#
-#       values = [
-#         "codebuild.amazonaws.com",
-#       ]
-#     }
-#
-#     condition = {
-#       test     = "StringEquals"
-#       variable = "ec2:Subnet"
-#
-#       values = [
-#         "${data.aws_subnet.selected.arn}",
-#       ]
-#     }
-#   }
-# }
-
 data "aws_iam_policy_document" "codebuild_s3" {
   statement {
     effect = "Allow"
@@ -501,13 +450,13 @@ data "aws_iam_policy_document" "codepipeline_s3" {
 data "aws_iam_policy_document" "appbin_bucket_policy" {
   statement {
     sid    = "AppbinWrite"
-    effect = "Allow"
+    effect = "${length(var.appbin_writers) > 0 ? "Allow" : "Deny"}"
 
     principals = {
       type = "AWS"
 
       identifiers = [
-        "${var.appbin_writers}",
+        "${length(var.appbin_writers) > 0 ? var.appbin_writers:module.codepipeline_role.role_arn}",
       ]
     }
 

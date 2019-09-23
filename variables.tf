@@ -27,6 +27,7 @@ variable "lambda_function_arn" {
 variable "appbin_writers" {
   description = "The IAM ARNs from other AWS Accounts that should be given access to write to the application binary bucket"
   type        = "list"
+  default     = []
 }
 
 variable "appbin_expiration_days" {
