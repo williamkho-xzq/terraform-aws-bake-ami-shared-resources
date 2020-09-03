@@ -1,31 +1,33 @@
-data "aws_caller_identity" "current" {}
+data "aws_caller_identity" "current" {
+}
 
-data "aws_region" "current" {}
+data "aws_region" "current" {
+}
 
 data "aws_vpc" "selected" {
-  id = "${var.vpc_id}"
+  id = var.vpc_id
 }
 
 data "aws_ip_ranges" "current_region_codebuild" {
-  regions  = ["${data.aws_region.current.name}"]
+  regions  = [data.aws_region.current.name]
   services = ["codebuild"]
 }
 
 data "aws_subnet_ids" "main" {
-  vpc_id = "${data.aws_vpc.selected.id}"
+  vpc_id = data.aws_vpc.selected.id
 
-  tags {
-    Tier = "${var.subnet_tier}"
+  tags = {
+    Tier = var.subnet_tier
   }
 }
 
 resource "random_shuffle" "subnet_id" {
-  input        = ["${data.aws_subnet_ids.main.ids}"]
+  input        = data.aws_subnet_ids.main.ids
   result_count = 1
 }
 
 data "aws_subnet" "selected" {
-  id = "${random_shuffle.subnet_id.result[0]}"
+  id = random_shuffle.subnet_id.result[0]
 }
 
 ## Will be required if the codebuild is in the VPC
@@ -138,7 +140,7 @@ data "aws_iam_policy_document" "codebuild_packer" {
       "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:placement-group/*",
       "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:security-group/${aws_security_group.template.id}",
       "arn:aws:ec2:${data.aws_region.current.name}::snapshot/*",
-      "${data.aws_subnet.selected.arn}",
+      data.aws_subnet.selected.arn,
     ]
   }
 
@@ -153,7 +155,7 @@ data "aws_iam_policy_document" "codebuild_packer" {
       "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:volume/*",
     ]
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "aws:RequestTag/Environment"
 
@@ -162,12 +164,12 @@ data "aws_iam_policy_document" "codebuild_packer" {
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "aws:RequestTag/ProductDomain"
 
       values = [
-        "${var.product_domain}",
+        var.product_domain,
       ]
     }
   }
@@ -183,10 +185,10 @@ data "aws_iam_policy_document" "codebuild_packer" {
       "arn:aws:ec2:${data.aws_region.current.name}::image/*",
     ]
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "ec2:Owner"
-      values   = "${var.base_ami_owners}"
+      values   = var.base_ami_owners
     }
   }
 
@@ -201,18 +203,18 @@ data "aws_iam_policy_document" "codebuild_packer" {
       "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:instance/*",
     ]
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "ec2:InstanceProfile"
 
       values = [
-        "${module.template_instance_role.instance_profile_name}",
-        "${module.template_instance_role.instance_profile_arn}",
-        "${module.template_instance_role.instance_profile_unique_id}",
+        module.template_instance_role.instance_profile_name,
+        module.template_instance_role.instance_profile_arn,
+        module.template_instance_role.instance_profile_unique_id,
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "aws:RequestTag/Name"
 
@@ -221,7 +223,7 @@ data "aws_iam_policy_document" "codebuild_packer" {
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringLike"
       variable = "aws:RequestTag/Service"
 
@@ -230,16 +232,16 @@ data "aws_iam_policy_document" "codebuild_packer" {
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "aws:RequestTag/ProductDomain"
 
       values = [
-        "${var.product_domain}",
+        var.product_domain,
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "aws:RequestTag/Environment"
 
@@ -261,18 +263,18 @@ data "aws_iam_policy_document" "codebuild_packer" {
       "*",
     ]
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "ec2:InstanceProfile"
 
       values = [
-        "${module.template_instance_role.instance_profile_name}",
-        "${module.template_instance_role.instance_profile_arn}",
-        "${module.template_instance_role.instance_profile_unique_id}",
+        module.template_instance_role.instance_profile_name,
+        module.template_instance_role.instance_profile_arn,
+        module.template_instance_role.instance_profile_unique_id,
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "ec2:ResourceTag/Name"
 
@@ -281,7 +283,7 @@ data "aws_iam_policy_document" "codebuild_packer" {
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringLike"
       variable = "ec2:ResourceTag/Service"
 
@@ -290,16 +292,16 @@ data "aws_iam_policy_document" "codebuild_packer" {
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "ec2:ResourceTag/ProductDomain"
 
       values = [
-        "${var.product_domain}",
+        var.product_domain,
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "ec2:ResourceTag/Environment"
 
@@ -316,8 +318,16 @@ data "aws_iam_policy_document" "codebuild_packer" {
       "iam:PassRole",
     ]
 
+    # TF-UPGRADE-TODO: In Terraform v0.10 and earlier, it was sometimes necessary to
+    # force an interpolation expression to be interpreted as a list by wrapping it
+    # in an extra set of list brackets. That form was supported for compatibility in
+    # v0.11, but is no longer supported in Terraform v0.12.
+    #
+    # If the expression in the following list itself returns a list, remove the
+    # brackets to avoid interpretation as a list of lists. If the expression
+    # returns a single list item then leave it as-is and remove this TODO comment.
     resources = [
-      "${module.template_instance_role.role_arn}",
+      module.template_instance_role.role_arn,
     ]
   }
 
@@ -388,7 +398,7 @@ data "aws_iam_policy_document" "codebuild_packer" {
       "arn:aws:ec2:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:instance/*",
     ]
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "ec2:CreateAction"
 
@@ -411,7 +421,7 @@ data "aws_iam_policy_document" "codebuild_packer" {
       "arn:aws:ec2:${data.aws_region.current.name}::snapshot/*",
     ]
 
-    condition = {
+    condition {
       test     = "StringLike"
       variable = "aws:RequestTag/Service"
 
@@ -420,7 +430,7 @@ data "aws_iam_policy_document" "codebuild_packer" {
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringLike"
       variable = "aws:RequestTag/ServiceVersion"
 
@@ -429,16 +439,16 @@ data "aws_iam_policy_document" "codebuild_packer" {
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "aws:RequestTag/ProductDomain"
 
       values = [
-        "${var.product_domain}",
+        var.product_domain,
       ]
     }
 
-    condition = {
+    condition {
       test     = "StringLike"
       variable = "aws:RequestTag/BaseAmiId"
 
@@ -503,12 +513,10 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
     sid    = "AppbinWrite"
     effect = "Allow"
 
-    principals = {
+    principals {
       type = "AWS"
 
-      identifiers = [
-        "${var.appbin_writers}",
-      ]
+      identifiers = var.appbin_writers
     }
 
     actions = [
@@ -519,7 +527,7 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
       "arn:aws:s3:::${module.application_binary.name}/${var.product_domain}*",
     ]
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "s3:x-amz-acl"
 
@@ -533,7 +541,7 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
     sid    = "DenyAllUnEncryptedHTTPAccess"
     effect = "Deny"
 
-    principals = {
+    principals {
       type = "*"
 
       identifiers = [
@@ -549,7 +557,7 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
       "arn:aws:s3:::${module.application_binary.name}/*",
     ]
 
-    condition = {
+    condition {
       test     = "Bool"
       variable = "aws:SecureTransport"
 
@@ -563,7 +571,7 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
     sid    = "DenyIncorrectEncryptionHeader"
     effect = "Deny"
 
-    principals = {
+    principals {
       type = "*"
 
       identifiers = [
@@ -579,7 +587,7 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
       "arn:aws:s3:::${module.application_binary.name}/*",
     ]
 
-    condition = {
+    condition {
       test     = "StringNotEquals"
       variable = "s3:x-amz-server-side-encryption"
 
@@ -593,7 +601,7 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
     sid    = "DenyUnEncryptedObjectUploads"
     effect = "Deny"
 
-    principals = {
+    principals {
       type = "*"
 
       identifiers = [
@@ -609,7 +617,7 @@ data "aws_iam_policy_document" "appbin_bucket_policy" {
       "arn:aws:s3:::${module.application_binary.name}/*",
     ]
 
-    condition = {
+    condition {
       test     = "Null"
       variable = "s3:x-amz-server-side-encryption"
 
@@ -625,7 +633,7 @@ data "aws_iam_policy_document" "cloudtrail_logs_bucket_policy" {
     sid    = "AWSCloudTrailAclCheck"
     effect = "Allow"
 
-    principals = {
+    principals {
       type        = "Service"
       identifiers = ["cloudtrail.amazonaws.com"]
     }
@@ -643,7 +651,7 @@ data "aws_iam_policy_document" "cloudtrail_logs_bucket_policy" {
     sid    = "AWSCloudTrailWrite"
     effect = "Allow"
 
-    principals = {
+    principals {
       type        = "Service"
       identifiers = ["cloudtrail.amazonaws.com"]
     }
@@ -656,7 +664,7 @@ data "aws_iam_policy_document" "cloudtrail_logs_bucket_policy" {
       "arn:aws:s3:::${module.cloudtrail_logs.name}/*",
     ]
 
-    condition = {
+    condition {
       test     = "StringEquals"
       variable = "s3:x-amz-acl"
 
@@ -672,7 +680,7 @@ data "aws_iam_policy_document" "codebuild_cache_bucket_policy" {
     sid    = "DenyAllUnEncryptedHTTPAccess"
     effect = "Deny"
 
-    principals = {
+    principals {
       type = "*"
 
       identifiers = [
@@ -688,7 +696,7 @@ data "aws_iam_policy_document" "codebuild_cache_bucket_policy" {
       "arn:aws:s3:::${module.codebuild_cache.name}/*",
     ]
 
-    condition = {
+    condition {
       test     = "Bool"
       variable = "aws:SecureTransport"
 
@@ -702,7 +710,7 @@ data "aws_iam_policy_document" "codebuild_cache_bucket_policy" {
     sid    = "DenyIncorrectEncryptionHeader"
     effect = "Deny"
 
-    principals = {
+    principals {
       type = "*"
 
       identifiers = [
@@ -718,7 +726,7 @@ data "aws_iam_policy_document" "codebuild_cache_bucket_policy" {
       "arn:aws:s3:::${module.codebuild_cache.name}/*",
     ]
 
-    condition = {
+    condition {
       test     = "StringNotEquals"
       variable = "s3:x-amz-server-side-encryption"
 
@@ -733,7 +741,7 @@ data "aws_iam_policy_document" "codebuild_cache_bucket_policy" {
     sid    = "DenyUnEncryptedObjectUploads"
     effect = "Deny"
 
-    principals = {
+    principals {
       type = "*"
 
       identifiers = [
@@ -749,7 +757,7 @@ data "aws_iam_policy_document" "codebuild_cache_bucket_policy" {
       "arn:aws:s3:::${module.codebuild_cache.name}/*",
     ]
 
-    condition = {
+    condition {
       test     = "Null"
       variable = "s3:x-amz-server-side-encryption"
 
@@ -765,7 +773,7 @@ data "aws_iam_policy_document" "codepipeline_artifact_bucket_policy" {
     sid    = "DenyAllUnEncryptedHTTPAccess"
     effect = "Deny"
 
-    principals = {
+    principals {
       type = "*"
 
       identifiers = [
@@ -781,7 +789,7 @@ data "aws_iam_policy_document" "codepipeline_artifact_bucket_policy" {
       "arn:aws:s3:::${module.codepipeline_artifact_bucket_name.name}/*",
     ]
 
-    condition = {
+    condition {
       test     = "Bool"
       variable = "aws:SecureTransport"
 
@@ -795,7 +803,7 @@ data "aws_iam_policy_document" "codepipeline_artifact_bucket_policy" {
     sid    = "DenyIncorrectEncryptionHeader"
     effect = "Deny"
 
-    principals = {
+    principals {
       type = "*"
 
       identifiers = [
@@ -811,7 +819,7 @@ data "aws_iam_policy_document" "codepipeline_artifact_bucket_policy" {
       "arn:aws:s3:::${module.codepipeline_artifact_bucket_name.name}/*",
     ]
 
-    condition = {
+    condition {
       test     = "StringNotEquals"
       variable = "s3:x-amz-server-side-encryption"
 
@@ -826,7 +834,7 @@ data "aws_iam_policy_document" "codepipeline_artifact_bucket_policy" {
     sid    = "DenyUnEncryptedObjectUploads"
     effect = "Deny"
 
-    principals = {
+    principals {
       type = "*"
 
       identifiers = [
@@ -842,7 +850,7 @@ data "aws_iam_policy_document" "codepipeline_artifact_bucket_policy" {
       "arn:aws:s3:::${module.codepipeline_artifact_bucket_name.name}/*",
     ]
 
-    condition = {
+    condition {
       test     = "Null"
       variable = "s3:x-amz-server-side-encryption"
 
@@ -889,7 +897,7 @@ data "aws_iam_policy_document" "codepipeline_lambda" {
     ]
 
     resources = [
-      "${var.lambda_function_arn}",
+      var.lambda_function_arn,
     ]
   }
 }
@@ -907,3 +915,4 @@ data "aws_iam_policy_document" "events_codepipeline" {
     ]
   }
 }
+
