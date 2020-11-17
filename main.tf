@@ -29,6 +29,11 @@ resource "aws_iam_role_policy" "codebuild_policy_s3" {
   policy = "${data.aws_iam_policy_document.codebuild_s3.json}"
 }
 
+resource "aws_iam_role_policy_attachment" "codebuild_ecr" {
+  role      = "${module.codebuild_role.role_name}"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
 module "codepipeline_role" {
   source = "github.com/traveloka/terraform-aws-iam-role.git//modules/service?ref=v1.0.2"
 
