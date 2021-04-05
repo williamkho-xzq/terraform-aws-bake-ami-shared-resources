@@ -26,6 +26,10 @@ output "application_binary_bucket" {
   value = "${aws_s3_bucket.application_binary.id}"
 }
 
+output "application_binary_bucket_arn" {
+  value = "${aws_s3_bucket.application_binary.arn}"
+}
+
 output "codebuild_cache_bucket" {
   value = "${aws_s3_bucket.codebuild_cache.id}"
 }
