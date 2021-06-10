@@ -272,6 +272,17 @@ data "aws_iam_policy_document" "codebuild_packer" {
 
   statement {
     effect = "Allow"
+    actions = [
+      "iam:GetInstanceProfile"
+    ]
+
+    resources = [
+      "${module.template_instance_role.instance_profile_arn}",
+    ]
+  }
+
+  statement {
+    effect = "Allow"
 
     actions = [
       "ec2:CopyImage",
